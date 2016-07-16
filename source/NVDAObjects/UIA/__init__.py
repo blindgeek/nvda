@@ -76,6 +76,7 @@ class UIATextInfo(textInfos.TextInfo):
 				self._rangeObj=self.obj.UIATextPattern.rangeFromChild(position.UIAElement)
 			except COMError:
 				raise LookupError
+			if not self._rangeObj: raise LookupError
 		elif isinstance(position,textInfos.Point):
 			#rangeFromPoint causes a freeze in UIA client library!
 			#p=POINT(position.x,position.y)
@@ -120,6 +121,7 @@ class UIATextInfo(textInfos.TextInfo):
 		text=self.obj.makeTextInfo(obj).text
 		if not text or text.isspace():
 			field["name"] = obj.name
+			field['alwaysReportName']=role==controlTypes.ROLE_GRAPHIC
 		#field["_childcount"] = obj.childCount
 		field["level"] = obj.positionInfo.get("level")
 		if role == controlTypes.ROLE_TABLE:
@@ -234,10 +236,7 @@ class UIATextInfo(textInfos.TextInfo):
 		for f in self._getFormatFieldsAndText(tempRange,formatConfig):
 			yield f
 
-	def getTextWithFields(self,formatConfig=None):
-		if not formatConfig:
-			formatConfig=config.conf["documentFormatting"]
-		fields=[]
+	def ding():
 		try:
 			e=self._rangeObj.getEnclosingElement().buildUpdatedCache(UIAHandler.handler.baseCacheRequest)
 		except COMError:
@@ -343,7 +342,7 @@ class UIA(Window):
 		elif self.role==controlTypes.ROLE_DOCUMENT and self.UIAElement.cachedAutomationId=="Microsoft.Windows.PDF.DocumentView":
 				# PDFs
 				import edge
-				clsList.append(edge.EdgePDFRoot)
+				clsList.append(edge.EdgeHTMLRoot)
 		if UIAControlType==UIAHandler.UIA_ProgressBarControlTypeId:
 			clsList.append(ProgressBar)
 		if UIAClassName=="ControlPanelLink":
@@ -459,8 +458,9 @@ class UIA(Window):
 		self.UIALegacyIAccessiblePattern=self._getUIAPattern(UIAHandler.UIA_LegacyIAccessiblePatternId,UIAHandler.IUIAutomationLegacyIAccessiblePattern)
 		return self.UIALegacyIAccessiblePattern
 
+	_TextInfo=UIATextInfo
 	def _get_TextInfo(self):
-		if self.UIATextPattern: return UIATextInfo
+		if self.UIATextPattern: return self._TextInfo
 		textInfo=super(UIA,self).TextInfo
 		if textInfo is NVDAObjectTextInfo and self.UIAIsWindowElement and self.role==controlTypes.ROLE_WINDOW:
 			import displayModel
